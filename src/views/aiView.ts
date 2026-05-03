@@ -71,11 +71,15 @@ export class AIView {
             </head>
             <body>
                 <div class="chat-container" id="chat">
-                    <div class="msg ai">¡Hola! Soy tu asistente de GEE Pro. ¿En qué puedo ayudarte hoy?</div>
+                    <div class="msg ai">
+                        <strong>GEE Pro Assistant</strong><br>
+                        Hello! I am your GEE Pro geospatial assistant. I specialize in Google Earth Engine scripts and remote sensing analysis.<br><br>
+                        How can I help you optimize your algorithms today?
+                    </div>
                 </div>
                 <div class="input-container">
-                    <input type="text" id="input" placeholder="Pregúntame algo sobre GEE..." />
-                    <button id="send">Enviar</button>
+                    <input type="text" id="input" placeholder="e.g. How to calculate NDVI?..." />
+                    <button id="send">Send</button>
                 </div>
                 <script>
                     const chat = document.getElementById('chat');
@@ -93,14 +97,14 @@ export class AIView {
                         
                         input.value = '';
                         
-                        // Mock AI response
+                        // Mock Expert Response
                         setTimeout(() => {
                             const aiMsg = document.createElement('div');
                             aiMsg.className = 'msg ai';
-                            aiMsg.textContent = "Entendido. Estoy procesando tu consulta sobre '" + text + "'. Como soy un prototipo, pronto podré generar código real aquí.";
+                            aiMsg.innerHTML = "<strong>Assistant:</strong> Understood. I'm analyzing your request about <em>" + text + "</em>. <br><br>I will provide optimized code snippets and best practices for this task shortly.";
                             chat.appendChild(aiMsg);
                             chat.scrollTop = chat.scrollHeight;
-                        }, 500);
+                        }, 600);
                     });
                 </script>
             </body>

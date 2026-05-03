@@ -17,31 +17,30 @@ export function activate(context: vscode.ExtensionContext) {
     let runtime: GEERuntime | undefined;
 
     let startCommand = vscode.commands.registerCommand('gee-pro.start', async () => {
+        // 1. Open the demo script on the left (Column One)
+        const demoPath = vscode.Uri.file(context.asAbsolutePath('demos/welcome_to_gee_pro.js'));
+        const doc = await vscode.workspace.openTextDocument(demoPath);
+        await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.One });
+
+        // 2. Initialize and show views in specific columns
         if (!mapView) {
             mapView = new MapView(context);
             mapView.onMessage(async (message: any) => {
                 if (message.command === 'mapClick') {
                     const coords = `[${message.lng.toFixed(6)}, ${message.lat.toFixed(6)}]`;
-                    if (consoleView) {
-                        consoleView.append(`Clicked Coords: ${coords}`);
-                    }
+                    if (consoleView) consoleView.append(`Map Click: ${coords}`);
                     
-                    const action = await vscode.window.showInformationMessage(
-                        `Coords: ${coords}`,
-                        'Insert at Cursor'
-                    );
-
+                    const action = await vscode.window.showInformationMessage(`Coords: ${coords}`, 'Insert at Cursor');
                     if (action === 'Insert at Cursor') {
                         const editor = vscode.window.activeTextEditor;
                         if (editor) {
-                            editor.edit(editBuilder => {
-                                editBuilder.insert(editor.selection.active, coords);
-                            });
+                            editor.edit(edit => edit.insert(editor.selection.active, coords));
                         }
                     }
                 }
             });
         }
+        // Map on Top Right (Column Two)
         mapView.show(vscode.ViewColumn.Two);
 
         if (!consoleView) {
@@ -52,29 +51,30 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             });
         }
+        // Console at Bottom Right (Beside Map or same column to stack)
         consoleView.show(vscode.ViewColumn.Two);
 
         if (!aiView) aiView = new AIView(context);
+        // AI Assistant on the far right (Column Three)
         aiView.show(vscode.ViewColumn.Three);
 
         if (!runtime) {
             runtime = new GEERuntime(consoleView, mapView);
-            // Try to load saved credentials
             const savedJson = await context.secrets.get('gee-pro.credentials');
             if (savedJson) {
                 try {
-                    if (consoleView) consoleView.append('Loading saved GEE credentials...');
+                    if (consoleView) consoleView.append('Loading GEE session...');
                     await runtime.initialize(JSON.parse(savedJson));
                     if (consoleView) consoleView.append('GEE Ready!');
                 } catch (e: any) {
-                    if (consoleView) consoleView.append(`Failed to load saved credentials: ${e.message}`);
+                    if (consoleView) consoleView.append(`Session error: ${e.message}`);
                 }
             } else {
-                if (consoleView) consoleView.append('Please authenticate to start (Cmd+Shift+P -> GEE Pro: Authenticate)');
+                if (consoleView) consoleView.append('Authentication required: Cmd+Shift+P -> GEE Pro: Login with Google');
             }
         }
 
-        vscode.window.showInformationMessage('GEE Pro Environment Started');
+        vscode.window.showInformationMessage('GEE Pro: Workspace Ready');
     });
 
     let authCommand = vscode.commands.registerCommand('gee-pro.authenticate', async () => {

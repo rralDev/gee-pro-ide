@@ -129,7 +129,7 @@ export class ConsoleView {
                         display: flex;
                         align-items: center;
                         padding: 8px 15px;
-                        border-top: 2px solid #007acc; /* Borde azul llamativo */
+                        border-top: 2px solid #007acc; /* Striking blue border */
                         box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
                     }
                     .prompt { color: #4ec9b0; font-weight: bold; margin-right: 10px; }
