@@ -2,7 +2,7 @@
   "name": "gee-pro-ide",
   "displayName": "GEE Pro IDE",
   "description": "Professional Google Earth Engine IDE for VS Code with integrated Map, Console, and AI Assistant.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "LuisRobles",
   "icon": "media/logo.png",
   "engines": {
@@ -51,8 +51,18 @@
         "category": "GEE Pro IDE"
       },
       {
+        "command": "gee-pro.run",
+        "title": "Run Selection/Line",
+        "category": "GEE Pro IDE"
+      },
+      {
+        "command": "gee-pro.runSelection",
+        "title": "Run Selection (Legacy)",
+        "category": "GEE Pro IDE"
+      },
+      {
         "command": "gee-pro.getLink",
-        "title": "GEE Pro IDE: Get Shareable Link",
+        "title": "Get Shareable Link",
         "category": "GEE Pro IDE"
       }
     ],
@@ -74,12 +84,12 @@
       "editor/title": [
         {
           "command": "gee-pro.run",
-          "when": "resourceExtname == .js",
+          "when": "resourceExtname == .js || resourceExtname == .gee",
           "group": "navigation"
         },
         {
           "command": "gee-pro.runSelection",
-          "when": "resourceExtname == .js",
+          "when": "resourceExtname == .js || resourceExtname == .gee",
           "group": "navigation"
         }
       ]
