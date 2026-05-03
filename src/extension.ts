@@ -56,6 +56,14 @@ export function activate(context: vscode.ExtensionContext) {
     process.env.TMPDIR = storagePath;
     process.chdir(storagePath); // Ensure CWD is writable for node-xmlhttprequest
 
+    // Shim for libraries that expect a browser environment (fixes "document is not defined")
+    if (typeof (global as any).document === 'undefined') {
+        (global as any).document = {
+            createElement: () => ({ style: {} }),
+            getElementsByTagName: () => []
+        };
+    }
+
     const assetProvider = new AssetExplorerProvider();
     vscode.window.registerTreeDataProvider('gee-pro-assets', assetProvider);
 

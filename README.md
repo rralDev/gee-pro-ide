@@ -62,3 +62,14 @@ GEE Pro handles your credentials securely. We never store your JSON files in pla
 
 ---
 Developed with ❤️ for the Geospatial Community.
+
+---
+
+### ⚠️ Beta Version & Feedback
+**GEE Pro IDE** is currently in early development. You might encounter bugs or unexpected behavior. Your feedback is extremely valuable to us!
+
+If you find a bug or have a feature request, please:
+1. Report it via email to: **lroblesr@outlook.es** (Developer)
+2. Open an issue on our [GitHub Repository](https://github.com/rralDev/gee-pro-ide/issues).
+
+Thank you for your patience and for helping us build a better tool for the geospatial community!
