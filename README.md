@@ -19,17 +19,28 @@
 1. Search for **GEE Pro** in the VS Code Marketplace and click **Install**.
 2. Open the Command Palette (`Cmd+Shift+P`) and run **`GEE Pro: Start Environment`**.
 
-### 🔑 Authentication Options
+### 🔑 Authentication & Setup
 
-#### Option A: Quick Login (Recommended for Personal Use)
-*Coming soon!* We are working on a 1-click Google Sign-in.
+GEE Pro IDE makes connecting to Earth Engine simple and secure:
 
-#### Option B: Service Account (Pro & Enterprise)
-If you prefer using a Service Account (highly recommended for production):
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts).
-2. Create a Service Account and grant it **Earth Engine Resource Viewer/Writer** roles.
-3. Create a **JSON Key** and download it.
-4. In VS Code, run **`GEE Pro: Authenticate`** and paste the JSON content.
+#### 1. Google OAuth (Standard Login)
+1. Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`).
+2. Search for **`GEE Pro IDE: Login with Google (Easy)`**.
+3. A browser window will open. Authorize your Google account.
+4. Copy the **Authorization Code** provided by Google.
+5. Paste it back into the VS Code input box.
+6. **Done!** Your session is saved securely. Thanks to refresh tokens, you won't need to log in again.
+
+#### 2. Service Account (Pro/Automation)
+If you prefer using a Service Account for automation:
+1. Obtain your Service Account **JSON Key** from the Google Cloud Console.
+2. Run the command **`GEE Pro IDE: Login with Service Account`**.
+3. Select your JSON file.
+
+---
+
+### 🖥️ Starting the Environment
+Once authenticated, run **`GEE Pro IDE: Start Environment`** to launch the 4-panel professional workspace.
 
 ## 📖 Quick Start
 
