@@ -1,49 +1,10 @@
 import * as vscode from 'vscode';
-import * as https from 'https';
 import { MapView } from './views/mapView';
 import { ConsoleView } from './views/consoleView';
-import { GEERuntime } from './geeRuntime';
+import type { GEERuntime } from './geeRuntime';
 import { AssetExplorerProvider } from './views/assetExplorer';
 import { AIView } from './views/aiView';
-
-async function exchangeCodeForToken(code: string): Promise<any> {
-    const CLIENT_ID = 'REDACTED_CLIENT_ID';
-    const CLIENT_SECRET = 'REDACTED_CLIENT_SECRET';
-    const REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob';
-
-    const data = new URLSearchParams({
-        code: code,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
-        grant_type: 'authorization_code'
-    }).toString();
-
-    return new Promise((resolve, reject) => {
-        const req = https.request({
-            hostname: 'oauth2.googleapis.com',
-            path: '/token',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(data)
-            }
-        }, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                const response = JSON.parse(body);
-                if (res.statusCode === 200) {
-                    // Include client info for future refreshes
-                    resolve({ ...response, client_id: CLIENT_ID, client_secret: CLIENT_SECRET });
-                } else reject(new Error(`Google error ${res.statusCode}: ${body}`));
-            });
-        });
-        req.on('error', reject);
-        req.write(data);
-        req.end();
-    });
-}
+import { exchangeCodeForToken, refreshAccessToken } from './auth';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('GEE Pro is now active!');
@@ -55,14 +16,6 @@ export function activate(context: vscode.ExtensionContext) {
     }
     process.env.TMPDIR = storagePath;
     process.chdir(storagePath); // Ensure CWD is writable for node-xmlhttprequest
-
-    // Shim for libraries that expect a browser environment (fixes "document is not defined")
-    if (typeof (global as any).document === 'undefined') {
-        (global as any).document = {
-            createElement: () => ({ style: {} }),
-            getElementsByTagName: () => []
-        };
-    }
 
     const assetProvider = new AssetExplorerProvider();
     vscode.window.registerTreeDataProvider('gee-pro-assets', assetProvider);
@@ -110,6 +63,12 @@ export function activate(context: vscode.ExtensionContext) {
                         const editor = vscode.window.activeTextEditor;
                         if (editor) editor.edit(edit => edit.insert(editor.selection.active, coords));
                     }
+                } else if (message.command === 'runAll') {
+                    vscode.commands.executeCommand('gee-pro.run');
+                } else if (message.command === 'runLine') {
+                    vscode.commands.executeCommand('gee-pro.runSelection');
+                } else if (message.command === 'reset') {
+                    vscode.commands.executeCommand('gee-pro.reset');
                 }
             });
         }
@@ -120,20 +79,49 @@ export function activate(context: vscode.ExtensionContext) {
         // AI Assistant Bottom-Right (Column Four)
         aiView.show(vscode.ViewColumn.Four);
 
-        // 4. Runtime initialization
+        // 4. Runtime initialization with SURGICAL SHIM
         if (!runtime) {
-            runtime = new GEERuntime(consoleView, mapView);
-            const savedJson = await context.secrets.get('gee-pro.credentials');
-            if (savedJson) {
-                try {
+            // Apply shim BEFORE requiring the runtime to catch top-level GEE load
+            const XMLHttpRequest = require('xhr2');
+            (global as any).XMLHttpRequest = XMLHttpRequest;
+            (global as any).window = global;
+            (global as any).document = { createElement: () => ({ style: {} }), getElementsByTagName: () => [] };
+
+            try {
+                const { GEERuntime } = require('./geeRuntime');
+                runtime = new GEERuntime(consoleView, mapView);
+                
+                const savedJson = await context.secrets.get('gee-pro.credentials');
+                if (savedJson) {
                     if (consoleView) consoleView.append('Loading GEE session...');
-                    await runtime.initialize(JSON.parse(savedJson));
-                    if (consoleView) consoleView.append('GEE Ready!');
-                } catch (e: any) {
-                    if (consoleView) consoleView.append(`Session error: ${e.message}`);
+                    let creds = JSON.parse(savedJson);
+                    
+                    // SMART AUTH: Try to refresh token if it's an OAuth user account
+                    if (creds.refresh_token && !creds.private_key) {
+                        try {
+                            if (consoleView) consoleView.append('Refreshing access token...');
+                            const newTokens = await refreshAccessToken(creds.refresh_token);
+                            creds = { ...creds, ...newTokens };
+                            await context.secrets.store('gee-pro.credentials', JSON.stringify(creds));
+                        } catch (e) {
+                            if (consoleView) consoleView.append(`Refresh failed, using old token: ${e}`);
+                        }
+                    }
+
+                    if (runtime) {
+                        await runtime.initialize(creds);
+                        if (consoleView) consoleView.append('GEE Ready!');
+                    }
+                } else {
+                    if (consoleView) consoleView.append('Authentication required: Cmd+Shift+P -> GEE Pro: Login with Google');
                 }
-            } else {
-                if (consoleView) consoleView.append('Authentication required: Cmd+Shift+P -> GEE Pro: Login with Google');
+            } catch (e: any) {
+                if (consoleView) consoleView.append(`Session error: ${e.message}`);
+            } finally {
+                // ALWAYS cleanup immediately
+                delete (global as any).XMLHttpRequest;
+                delete (global as any).window;
+                delete (global as any).document;
             }
         }
 
@@ -164,10 +152,10 @@ export function activate(context: vscode.ExtensionContext) {
     let loginCommand = vscode.commands.registerCommand('gee-pro.login', async () => {
         const CLIENT_ID = 'REDACTED_CLIENT_ID';
         const SCOPES = 'https://www.googleapis.com/auth/earthengine https://www.googleapis.com/auth/cloud-platform';
-        
+
         // OAuth URL with offline access to get a refresh token
         const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${CLIENT_ID}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=${encodeURIComponent(SCOPES)}&access_type=offline&prompt=consent`;
-        
+
         const selection = await vscode.window.showInformationMessage(
             'GEE Pro: Authenticating with your Google Account...',
             'Open Browser',
@@ -176,7 +164,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (selection === 'Open Browser') {
             await vscode.env.openExternal(vscode.Uri.parse(authUrl));
-            
+
             const code = await vscode.window.showInputBox({
                 prompt: 'Paste the Authorization Code provided by Google here',
                 ignoreFocusOut: true,
@@ -186,13 +174,15 @@ export function activate(context: vscode.ExtensionContext) {
             if (code) {
                 try {
                     if (consoleView) consoleView.append('Verifying with Google...');
-                    
+
                     const tokenData = await exchangeCodeForToken(code);
-                    
+
+
+
                     if (runtime) {
                         await runtime.initialize(tokenData);
                         await context.secrets.store('gee-pro.credentials', JSON.stringify(tokenData));
-                        
+
                         vscode.window.showInformationMessage('GEE Pro: Login Successful!');
                         if (consoleView) consoleView.append('Welcome! Your session is now active and securely saved.');
                     }
@@ -208,8 +198,19 @@ export function activate(context: vscode.ExtensionContext) {
         const editor = vscode.window.activeTextEditor;
         if (editor && runtime) {
             const code = editor.document.getText();
-            if (consoleView) consoleView.append(`Running full script...`);
-            runtime.execute(code);
+            if (consoleView) {
+                consoleView.append('----------------------------------------');
+                consoleView.append('Running full script...');
+            }
+            runtime.execute(code, true).then(() => {
+                if (consoleView) consoleView.append('gee> ');
+            });
+        }
+    });
+
+    let resetCommand = vscode.commands.registerCommand('gee-pro.reset', () => {
+        if (runtime) {
+            runtime.reset();
         }
     });
 
@@ -217,23 +218,67 @@ export function activate(context: vscode.ExtensionContext) {
         const editor = vscode.window.activeTextEditor;
         if (editor && runtime) {
             const selection = editor.selection;
-            const code = selection.isEmpty ? editor.document.lineAt(selection.active.line).text : editor.document.getText(selection);
-            
-            if (consoleView) consoleView.append(`Running selection...`);
-            runtime.execute(code);
-            
-            // Move cursor to next line if it was a single line run
+            let code = "";
+            let targetLine = selection.active.line;
+
             if (selection.isEmpty) {
-                const nextLine = selection.active.line + 1;
-                if (nextLine < editor.document.lineCount) {
-                    const newPos = new vscode.Position(nextLine, 0);
-                    editor.selection = new vscode.Selection(newPos, newPos);
+                // SMART SELECTION: Expand to complete block if necessary
+                let stack: string[] = [];
+                let fullCode = "";
+                let currentLineIndex = selection.active.line;
+                let isBalanced = false;
+
+                while (currentLineIndex < editor.document.lineCount) {
+                    const lineText = editor.document.lineAt(currentLineIndex).text;
+                    fullCode += lineText + "\n";
+                    
+                    // Simple bracket matcher
+                    for (const char of lineText) {
+                        if (char === '{' || char === '(' || char === '[') stack.push(char);
+                        else if (char === '}') { if (stack[stack.length - 1] === '{') stack.pop(); }
+                        else if (char === ')') { if (stack[stack.length - 1] === '(') stack.pop(); }
+                        else if (char === ']') { if (stack[stack.length - 1] === '[') stack.pop(); }
+                    }
+
+                    if (stack.length === 0) {
+                        isBalanced = true;
+                        break;
+                    }
+                    currentLineIndex++;
                 }
+
+                code = isBalanced ? fullCode.trim() : editor.document.lineAt(selection.active.line).text;
+                targetLine = currentLineIndex; // Jump cursor to end of block
+            } else {
+                code = editor.document.getText(selection);
+            }
+            
+            const view = consoleView;
+            if (view) {
+                // RStudio-style echo: show the code being run
+                const lines = code.split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) view.append(`> ${line.trim()}`);
+                });
+            }
+
+            if (runtime) {
+                runtime.execute(code).then(() => {
+                    if (consoleView) consoleView.append('gee> ');
+                });
+            }
+
+            // Move cursor to next line or end of block
+            const nextLine = targetLine + 1;
+            if (nextLine < editor.document.lineCount) {
+                const newPos = new vscode.Position(nextLine, 0);
+                editor.selection = new vscode.Selection(newPos, newPos);
+                editor.revealRange(new vscode.Range(newPos, newPos));
             }
         }
     });
 
-    context.subscriptions.push(startCommand, authCommand, loginCommand, runCommand, runSelectionCommand);
+    context.subscriptions.push(startCommand, authCommand, loginCommand, runCommand, runSelectionCommand, resetCommand);
 }
 
-export function deactivate() {}
+export function deactivate() { }

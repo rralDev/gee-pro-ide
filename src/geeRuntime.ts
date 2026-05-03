@@ -62,27 +62,46 @@ export class GEERuntime {
     }
 
     public async initialize(credentials: any) {
+        // SURGICAL SHIM: Only exists during this call
+        const XMLHttpRequest = require('xhr2');
+        (global as any).XMLHttpRequest = XMLHttpRequest;
+        (global as any).window = global;
+        (global as any).document = { createElement: () => ({ style: {} }), getElementsByTagName: () => [] };
+
+        const cleanup = () => {
+            delete (global as any).XMLHttpRequest;
+            delete (global as any).window;
+            delete (global as any).document;
+        };
+
         return new Promise((resolve, reject) => {
             const projectId = credentials.project_id || credentials.project || 'gee-pro-default';
             
+            const onInitSuccess = () => {
+                this.isInitialized = true;
+                cleanup();
+                resolve(true);
+            };
+
+            const onInitError = (err: any) => {
+                cleanup();
+                reject(err);
+            };
+
             if (credentials.private_key) {
                 // Service Account Flow
                 ee.data.authenticateViaPrivateKey(
                     credentials,
                     () => {
                         ee.initialize(null, null, () => {
-                            this.isInitialized = true;
                             this.consoleView.append(`GEE Session initialized (Service Account): ${projectId}`);
-                            resolve(true);
-                        }, (err: any) => reject(err), projectId);
+                            onInitSuccess();
+                        }, onInitError, projectId);
                     },
-                    (err: any) => reject(err)
+                    onInitError
                 );
             } else if (credentials.access_token || credentials.refresh_token) {
                 // Real OAuth Flow
-                this.isInitialized = true;
-                
-                // Set the token in the EE library
                 ee.data.setAuthToken(
                     credentials.client_id,
                     'Bearer',
@@ -92,23 +111,33 @@ export class GEERuntime {
                     () => {
                         ee.initialize(null, null, () => {
                             this.consoleView.append(`GEE Session initialized (Google Account)`);
-                            resolve(true);
-                        }, (err: any) => reject(err));
+                            onInitSuccess();
+                        }, onInitError);
                     },
-                    true
+                    false // Crucial: false means don't try to use browser popup
                 );
             } else {
                 this.isInitialized = true;
+                cleanup();
                 this.consoleView.append(`GEE Session initialized (Guest)`);
                 resolve(true);
             }
         });
     }
 
-    public execute(code: string) {
+    public reset() {
+        this.resetContext();
+        this.consoleView.append('Environment reset. All variables cleared.');
+    }
+
+    public async execute(code: string, resetContext: boolean = false) {
         if (!this.isInitialized) {
             vscode.window.showErrorMessage('GEE not initialized. Please authenticate first.');
             return;
+        }
+
+        if (resetContext) {
+            this.resetContext();
         }
 
         try {

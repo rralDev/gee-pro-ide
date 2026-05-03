@@ -18,4 +18,4 @@ Map.addLayer(elevation, {
     palette: ['blue', 'green', 'red']
 }, 'SRTM Elevation');
 
-print('Welcome to GEE Pro! Your interactive map is loading...');
+print('Welcome to GEE Pro! Your interactive map is loading..test.');
