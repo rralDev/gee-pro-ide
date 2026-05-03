@@ -4,72 +4,68 @@
   <img src="media/logo.png" width="128" alt="GEE Pro IDE Logo">
 </p>
 
-**GEE Pro IDE** is a high-performance, local development environment for Google Earth Engine. Stop fighting with browser tabs and start coding like a pro with the full power of Visual Studio Code.
+**GEE Pro IDE** is a high-performance, local development environment for Google Earth Engine. Stop fighting with browser tabs and start coding like a pro with the full power of Visual Studio Code and an RStudio-inspired workflow.
 
-## 🚀 Key Features
+## 🚀 Key Features (Pro Edition)
 
-- **Interactive Map View**: Real-time Leaflet-based visualization. Add layers, set center, and inspect coordinates with one click.
-- **GEE Shell (Linux-style)**: Manage your cloud assets using familiar terminal commands like `ls`, `cd`, `pwd`, `mkdir`, `cp`, and `mv`.
-- **Smart Execution**: Run your full script or just the current selection with `Cmd + Enter`. Persistent context keeps your variables alive between runs.
-- **Secure Authentication**: Your credentials are encrypted using VS Code's SecretStorage (System Keychain).
-- **AI-Powered Coding**: Integrated chat assistant designed to help you write complex geospatial algorithms (Beta).
+- **Smart Block Execution (RStudio Style)**: Execute code blocks intelligently. Use `Cmd + Enter` and the IDE will automatically detect parentheses and brackets to run full statements, then jump to the next line.
+- **Premium Map Experience**: Minimalist, glassmorphism-styled map interface with centered coordinates visor and integrated help menu.
+- **GEE Shell (Linux-style)**: Manage your cloud assets using familiar terminal commands like `ls`, `cd`, `pwd`, `mkdir`, `cp`, and `mv` directly in the GEE Console.
+- **Intelligent Session Management**: Built-in OAuth2 auto-refresh logic. Log in once and stay connected; the IDE handles token renewals silently in the background.
+- **AI-Powered Geospatial Assistant**: Integrated chat assistant designed to help you write complex geospatial algorithms and optimize your code.
+- **Professional Console**: Real-time script echoing with `>` prefix and a ready state `gee>` prompt for a true IDE feel.
 
 ## 🛠️ Installation & Setup
 
 1. Search for **GEE Pro** in the VS Code Marketplace and click **Install**.
 2. Open the Command Palette (`Cmd+Shift+P`) and run **`GEE Pro: Start Environment`**.
 
-### 🔑 Authentication & Setup
+### 🔑 Authentication & Persistence
 
 GEE Pro IDE makes connecting to Earth Engine simple and secure:
 
 #### 1. Google OAuth (Standard Login)
-1. Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`).
-2. Search for **`GEE Pro IDE: Login with Google (Easy)`**.
-3. A browser window will open. Authorize your Google account.
-4. Copy the **Authorization Code** provided by Google.
-5. Paste it back into the VS Code input box.
-6. **Done!** Your session is saved securely. Thanks to refresh tokens, you won't need to log in again.
+- Run the command **`GEE Pro IDE: Login with Google (Easy)`**.
+- Follow the browser flow and paste the authorization code.
+- **Done!** Your session is saved securely. Thanks to the new **Auto-Refresh** system, you won't need to log in again for weeks.
 
-#### 2. Service Account (Pro/Automation)
-If you prefer using a Service Account for automation:
-1. Obtain your Service Account **JSON Key** from the Google Cloud Console.
-2. Run the command **`GEE Pro IDE: Login with Service Account`**.
-3. Select your JSON file.
+#### 2. Service Account
+- Run the command **`GEE Pro IDE: Login with Service Account`** and select your JSON key.
 
 ---
 
-### 🖥️ Starting the Environment
-Once authenticated, run **`GEE Pro IDE: Start Environment`** to launch the 4-panel professional workspace.
+## 📖 Quick Start & Shortcuts
 
-## 📖 Quick Start
+Create a `.js` file and start coding like an expert:
 
-Create a `.js` file and start coding:
+| Shortcut | Action |
+| :--- | :--- |
+| `Cmd + Enter` | **Run Selection / Smart Block** (Auto-detects multi-line code) |
+| `Cmd + Shift + Enter` | **Run Entire Script** |
+| `Cmd + Alt + R` | **Reset Environment** (Clears variables for a fresh start) |
 
 ```javascript
-// Set center and load data
-Map.setCenter(-75, -10, 5);
-const image = ee.Image('USGS/SRTMGL1_003');
+// 1. Set center and load data
+Map.setCenter(-77.0428, -12.0464, 10);
+const elevation = ee.Image('CGIAR/SRTM90_V4');
 
-// Add to interactive map
-Map.addLayer(image, {min: 0, max: 3000}, 'Elevation');
+// 2. Add to interactive map with professional palette
+Map.addLayer(elevation, {
+    min: 0, 
+    max: 4000, 
+    palette: ['blue', 'green', 'red']
+}, 'SRTM Elevation');
 
-print('GEE Pro is ready!');
+print('GEE Pro IDE is Ready!');
 ```
 
 ## 🛡️ Privacy & Security
-GEE Pro handles your credentials securely. We never store your JSON files in plain text. Everything is managed through the official Google Earth Engine API and VS Code's encrypted storage.
+GEE Pro handles your credentials securely using VS Code's encrypted **SecretStorage**. We never store your JSON files or tokens in plain text. Everything is managed through the official Google Earth Engine API.
 
 ---
-Developed with ❤️ for the Geospatial Community.
-
----
+Developed with ❤️ for the Geospatial Community by **Luis Robles**.
 
 ### ⚠️ Beta Version & Feedback
-**GEE Pro IDE** is currently in early development. You might encounter bugs or unexpected behavior. Your feedback is extremely valuable to us!
-
 If you find a bug or have a feature request, please:
-1. Report it via email to: **lroblesr@outlook.es** (Developer)
+1. Report it via email to: **lroblesr@outlook.es**
 2. Open an issue on our [GitHub Repository](https://github.com/rralDev/gee-pro-ide/issues).
-
-Thank you for your patience and for helping us build a better tool for the geospatial community!
